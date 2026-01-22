@@ -16,8 +16,8 @@ export async function recordScan(input: ScanEventInput): Promise<void> {
   await sql`
     INSERT INTO scan_events (qr_code_id, user_agent, referrer, ip_hash, device_type, browser)
     VALUES (${input.qrCodeId}, ${input.userAgent}, ${
-    input.referrer || null
-  }, ${ipHash}, ${deviceType}, ${browser})
+      input.referrer || null
+    }, ${ipHash}, ${deviceType}, ${browser})
   `;
 }
 
@@ -30,10 +30,18 @@ export interface StatsData {
   browserBreakdown: Record<string, number>;
 }
 
+export interface ScanEvent {
+  id: number;
+  scanned_at: string;
+  device_type: string;
+  browser: string;
+  referrer?: string;
+}
+
 export async function getQRCodeStats(
   qrCodeId: number,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<StatsData> {
   // Total scans
   const totalResult =
@@ -153,4 +161,30 @@ export async function getQRCodeStats(
     deviceBreakdown,
     browserBreakdown,
   };
+}
+
+export async function getRecentScans(
+  qrCodeId: number,
+  limit: number = 50,
+): Promise<ScanEvent[]> {
+  const results = await sql`
+    SELECT 
+      id,
+      scanned_at,
+      device_type,
+      browser,
+      referrer
+    FROM scan_events
+    WHERE qr_code_id = ${qrCodeId}
+    ORDER BY scanned_at DESC
+    LIMIT ${limit}
+  `;
+
+  return results.map((row: any) => ({
+    id: Number(row.id),
+    scanned_at: row.scanned_at,
+    device_type: row.device_type,
+    browser: row.browser,
+    referrer: row.referrer || undefined,
+  }));
 }

@@ -41,7 +41,7 @@ router.get("/", async (req: Request, res: Response) => {
         } catch (statsError: any) {
           console.error(
             `Error getting stats for QR code ${qr.id}:`,
-            statsError.message
+            statsError.message,
           );
           return {
             ...qr,
@@ -49,7 +49,7 @@ router.get("/", async (req: Request, res: Response) => {
             redirectUrl: `${req.protocol}://${req.get("host")}/r/${qr.slug}`,
           };
         }
-      })
+      }),
     );
 
     res.json(qrCodesWithStats);
@@ -128,10 +128,29 @@ router.get("/:id/stats", async (req: Request, res: Response) => {
     const stats = await statsService.getQRCodeStats(
       id,
       startDate as string,
-      endDate as string
+      endDate as string,
     );
 
     res.json(stats);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get recent scan events for a QR code
+router.get("/:id/scans", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const qrCode = await qrcodeService.getQRCodeById(id);
+
+    if (!qrCode) {
+      return res.status(404).json({ error: "QR code not found" });
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+    const scans = await statsService.getRecentScans(id, limit);
+
+    res.json(scans);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
